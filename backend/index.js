@@ -32,14 +32,14 @@ async function updatePasswords() {
         const result = await pool.query('SELECT id, user_name, password FROM users');
 
         for (let user of result.rows) {
-            const hashedPassword = await bcrypt.hash(user.password, 10);
+            if (user.password && user.password === user.password.trim()) {
+                const hashedPassword = await bcrypt.hash(user.password, 10);
 
-            await pool.query(
-                'UPDATE users SET password = $1 WHERE id = $2',
-                [hashedPassword, user.id]
-            );
-
-            console.log(`Wachtwoord van gebruiker ${user.user_name} is gehasht en bijgewerkt.`);
+                await pool.query(
+                    'UPDATE users SET password = $1 WHERE id = $2',
+                    [hashedPassword, user.id]
+                );
+            }
         }
 
         console.log('Alle wachtwoorden zijn geüpdatet.');
@@ -48,43 +48,10 @@ async function updatePasswords() {
     }
 }
 
-app.get('/update-passwords', async (req, res) => {
-    try {
-        await updatePasswords();
-        res.status(200).json({ message: 'Wachtwoorden succesvol bijgewerkt' });
-    } catch (err) {
-        res.status(500).json({ message: 'Fout bij het bijwerken van wachtwoorden', error: err.message });
-    }
-});
-
-app.get('/authenticate/:username/:password', async (request, response) => {
-    const username = request.params.username;
-    const password = request.params.password;
-
-    try {
-        const result = await pool.query(
-            'SELECT * FROM users WHERE user_name = $1',
-            [username]
-        );
-
-        if (result.rows.length === 0) {
-            return response.status(401).json({ message: 'Invalid username or password' });
-        }
-
-        const user = result.rows[0];
-        const match = await bcrypt.compare(password, user.password);
-
-        if (match) {
-            return response.status(200).json({ message: 'Login successful' });
-        } else {
-            return response.status(401).json({ message: 'Invalid username or password' });
-        }
-    } catch (err) {
-        console.error('Error during authentication:', err);
-        return response.status(500).json({ message: 'Internal server error' });
-    }
-});
-
-app.listen(port, () => {
-    console.log(`App running on port ${port}.`);
+updatePasswords().then(() => {
+    app.listen(port, () => {
+        console.log(`App running on port ${port}.`);
+    });
+}).catch(err => {
+    console.error('Er is een fout opgetreden bij het updaten van wachtwoorden, de server wordt niet gestart.', err);
 });
