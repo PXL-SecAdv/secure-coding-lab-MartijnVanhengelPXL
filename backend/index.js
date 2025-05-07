@@ -48,7 +48,14 @@ async function updatePasswords() {
     }
 }
 
-updatePasswords();
+app.get('/update-passwords', async (req, res) => {
+    try {
+        await updatePasswords();
+        res.status(200).json({ message: 'Wachtwoorden succesvol bijgewerkt' });
+    } catch (err) {
+        res.status(500).json({ message: 'Fout bij het bijwerken van wachtwoorden', error: err.message });
+    }
+});
 
 app.get('/authenticate/:username/:password', async (request, response) => {
     const username = request.params.username;
