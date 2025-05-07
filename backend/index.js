@@ -55,6 +55,24 @@ app.get('/authenticate/:username/:password', async (request, response) => {
     }
 });
 
+app.post('/register', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await pool.query(
+            'INSERT INTO users (user_name, password) VALUES ($1, $2)',
+            [username, hashedPassword]
+        );
+
+        res.status(201).json({ message: 'User registered successfully' });
+    } catch (err) {
+        console.error('Error during registration:', err);
+        res.status(500).json({ message: 'Error registering user' });
+    }
+});
+
 app.listen(port, () => {
     console.log(`App running on port ${port}.`);
 });
