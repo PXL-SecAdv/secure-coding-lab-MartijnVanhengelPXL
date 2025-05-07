@@ -27,6 +27,29 @@ app.use(
     })
 );
 
+async function updatePasswords() {
+    try {
+        const result = await pool.query('SELECT id, user_name, password FROM users');
+
+        for (let user of result.rows) {
+            const hashedPassword = await bcrypt.hash(user.password, 10);
+
+            await pool.query(
+                'UPDATE users SET password = $1 WHERE id = $2',
+                [hashedPassword, user.id]
+            );
+
+            console.log(`Wachtwoord van gebruiker ${user.user_name} is gehasht en bijgewerkt.`);
+        }
+
+        console.log('Alle wachtwoorden zijn geüpdatet.');
+    } catch (err) {
+        console.error('Fout bij het updaten van wachtwoorden:', err);
+    }
+}
+
+updatePasswords();
+
 app.get('/authenticate/:username/:password', async (request, response) => {
     const username = request.params.username;
     const password = request.params.password;
@@ -52,24 +75,6 @@ app.get('/authenticate/:username/:password', async (request, response) => {
     } catch (err) {
         console.error('Error during authentication:', err);
         return response.status(500).json({ message: 'Internal server error' });
-    }
-});
-
-app.post('/register', async (req, res) => {
-    const { username, password } = req.body;
-
-    try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        await pool.query(
-            'INSERT INTO users (user_name, password) VALUES ($1, $2)',
-            [username, hashedPassword]
-        );
-
-        res.status(201).json({ message: 'User registered successfully' });
-    } catch (err) {
-        console.error('Error during registration:', err);
-        res.status(500).json({ message: 'Error registering user' });
     }
 });
 
