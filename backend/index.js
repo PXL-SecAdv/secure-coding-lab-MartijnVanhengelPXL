@@ -27,19 +27,35 @@ app.use(
     })
 );
 
+async function waitForDatabase() {
+    let attempts = 0;
+    while (attempts < 10) {
+        try {
+            await pool.query('SELECT NOW()');
+            console.log('Database is beschikbaar.');
+            return;
+        } catch (err) {
+            console.log('Database niet beschikbaar, poging ' + (attempts + 1));
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    }
+    throw new Error('Database is niet beschikbaar na meerdere pogingen.');
+}
+
 async function updatePasswords() {
     try {
         const result = await pool.query('SELECT id, user_name, password FROM users');
 
         for (let user of result.rows) {
-            if (user.password && user.password === user.password.trim()) {
-                const hashedPassword = await bcrypt.hash(user.password, 10);
+            const hashedPassword = await bcrypt.hash(user.password, 10);
 
-                await pool.query(
-                    'UPDATE users SET password = $1 WHERE id = $2',
-                    [hashedPassword, user.id]
-                );
-            }
+            await pool.query(
+                'UPDATE users SET password = $1 WHERE id = $2',
+                [hashedPassword, user.id]
+            );
+
+            console.log(`Wachtwoord van gebruiker ${user.user_name} is gehasht en bijgewerkt.`);
         }
 
         console.log('Alle wachtwoorden zijn geüpdatet.');
@@ -48,10 +64,13 @@ async function updatePasswords() {
     }
 }
 
-updatePasswords().then(() => {
+async function startApp() {
+    await waitForDatabase();
+    console.log("Database is klaar om verbinding te maken.");
+    await updatePasswords(); 
     app.listen(port, () => {
         console.log(`App running on port ${port}.`);
     });
-}).catch(err => {
-    console.error('Er is een fout opgetreden bij het updaten van wachtwoorden, de server wordt niet gestart.', err);
-});
+}
+
+startApp();
