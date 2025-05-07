@@ -21,7 +21,11 @@ console.log("Connecting to PostgreSQL...")
 
 app.use(cors())
 app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({ extended: true }))
+app.use(
+    bodyParser.urlencoded({
+        extended: true,
+    })
+)
 
 async function waitForDatabase() {
     let attempts = 0
@@ -42,11 +46,18 @@ async function waitForDatabase() {
 async function updatePasswords() {
     try {
         const result = await pool.query('SELECT id, user_name, password FROM users')
+
         for (let user of result.rows) {
             const hashedPassword = await bcrypt.hash(user.password, 10)
-            await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, user.id])
+
+            await pool.query(
+                'UPDATE users SET password = $1 WHERE id = $2',
+                [hashedPassword, user.id]
+            )
+
             console.log(`Wachtwoord van gebruiker ${user.user_name} is gehasht en bijgewerkt.`)
         }
+
         console.log('Alle wachtwoorden zijn geüpdatet.')
     } catch (err) {
         console.error('Fout bij het updaten van wachtwoorden:', err)
@@ -58,7 +69,10 @@ app.get('/authenticate/:username/:password', async (request, response) => {
     const password = request.params.password
 
     try {
-        const result = await pool.query('SELECT * FROM users WHERE user_name = $1', [username])
+        const result = await pool.query(
+            'SELECT * FROM users WHERE user_name = $1',
+            [username]
+        )
 
         if (result.rows.length === 0) {
             return response.status(401).json({ message: 'Invalid username or password' })
@@ -73,7 +87,20 @@ app.get('/authenticate/:username/:password', async (request, response) => {
             return response.status(401).json({ message: 'Invalid username or password' })
         }
     } catch (err) {
+        console.error('Error during authentication:', err)
         return response.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+app.post('/register', async (req, res) => {
+    const { username, password } = req.body
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10)
+        await pool.query('INSERT INTO users (user_name, password) VALUES ($1, $2)', [username, hashedPassword])
+        res.status(201).json({ message: 'User registered' })
+    } catch (err) {
+        res.status(500).json({ message: 'Error registering user', error: err.message })
     }
 })
 
