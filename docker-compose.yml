@@ -1,3 +1,5 @@
+version: "3.7"
+
 services:
   frontend:
     build: ./frontend
@@ -14,53 +16,19 @@ services:
       - db
     ports:
       - "3000:3000"
-    secrets:
-      - db_user
-      - db_password
-      - db_name
-      - db_host
-      - user_name_admin
-      - user_pwd_admin
-      - user_name_grg
-      - user_pwd_grg
+    env_file:
+      - .env
 
   db:
     image: postgres
     container_name: db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - '5432:5432'
-    environment:
-      - POSTGRES_USER=/run/secrets/db_user
-      - POSTGRES_PASSWORD=/run/secrets/db_password
-      - POSTGRES_DB=/run/secrets/db_name
-      - POSTGRES_HOST=/run/secrets/db_host
-      - POSTGRES_PORT=5432
-    secrets:
-      - db_user
-      - db_password
-      - db_name
-      - db_host
-      - user_name_admin
-      - user_pwd_admin
-      - user_name_grg
-      - user_pwd_grg
-
-secrets:
-  db_user:
-    external: true
-  db_password:
-    external: true
-  db_name:
-    external: true
-  db_host:
-    external: true
-  db_port:
-    external: true
-  user_name_admin:
-    external: true
-  user_pwd_admin:
-    external: true
-  user_name_grg:
-    external: true
-  user_pwd_grg:
-    external: true
+    volumes:
+      - ./db/database.sql:/docker-entrypoint-initdb.d/create_db.sql
+    env_file:
+      - .env
