@@ -1,5 +1,4 @@
-require('dotenv').config();
-
+const fs = require('fs');
 const pg = require('pg');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -9,22 +8,33 @@ const cors = require('cors');
 const app = express();
 const port = 3000;
 
+function readSecret(secretName) {
+    const path = `/run/secrets/${secretName}`;
+    try {
+        return fs.readFileSync(path, 'utf8').trim();
+    } catch (err) {
+        throw new Error(`Kon secret ${secretName} niet lezen: ${err.message}`);
+    }
+}
+
+const dbUser = readSecret('POSTGRES_USER');
+const dbPassword = readSecret('POSTGRES_PASSWORD');
+const dbHost = readSecret('POSTGRES_HOST');
+const dbName = readSecret('POSTGRES_DB');
+const dbPort = 5432;
+
 const pool = new pg.Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
+    user: dbUser,
+    host: dbHost,
+    database: dbName,
+    password: dbPassword,
+    port: dbPort,
     connectionTimeoutMillis: 5000
 });
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(
-    bodyParser.urlencoded({
-        extended: true,
-    })
-);
+app.use(bodyParser.urlencoded({ extended: true }));
 
 async function waitForDatabase() {
     let attempts = 0;
@@ -43,10 +53,8 @@ async function waitForDatabase() {
 async function updatePasswords() {
     try {
         const result = await pool.query('SELECT id, user_name, password FROM users');
-
         for (let user of result.rows) {
             const hashedPassword = await bcrypt.hash(user.password, 10);
-
             await pool.query(
                 'UPDATE users SET password = $1 WHERE id = $2',
                 [hashedPassword, user.id]
