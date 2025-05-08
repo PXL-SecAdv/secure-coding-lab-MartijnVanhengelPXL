@@ -7,7 +7,7 @@ BEGIN;
 
 create table users (id serial primary key, user_name text not null unique, password text not null);
 grant all privileges on table users to secadv;
-GRANT USAGE, SELECT, UPDATE ON SEQUENCE users_id_seq TO ${POSTGRES_USER};
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE users_id_seq TO secadv;
 
 insert into users (user_name, password) values ('pxl-admin', 'insecureandlovinit') ;
 insert into users (user_name, password) values ('george', 'iwishihadbetteradmins') ;
