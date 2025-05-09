@@ -8,20 +8,11 @@ const cors = require('cors');
 const app = express();
 const port = 3000;
 
-const initialPool = new pg.Pool({
-    user: 'postgres', 
-    host: process.env.DB_HOST,
-    database: 'postgres', 
-    password: '', 
-    port: process.env.DB_PORT,
-    connectionTimeoutMillis: 5000
-});
-
 const pool = new pg.Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
     database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
+    password: '',
     port: process.env.DB_PORT,
     connectionTimeoutMillis: 5000
 });
