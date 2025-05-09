@@ -45,17 +45,20 @@ async function updatePasswords() {
         const result = await pool.query('SELECT id, user_name, password FROM users');
 
         for (let user of result.rows) {
-            const hashedPassword = await bcrypt.hash(user.password, 10);
+            if (!user.password.startsWith('$2b$')) { 
+                const hashedPassword = await bcrypt.hash(user.password, 10);
 
-            await pool.query(
-                'UPDATE users SET password = $1 WHERE id = $2',
-                [hashedPassword, user.id]
-            );
+                await pool.query(
+                    'UPDATE users SET password = $1 WHERE id = $2',
+                    [hashedPassword, user.id]
+                );
+            }
         }
     } catch (err) {
         console.error('Fout bij het updaten van wachtwoorden:', err);
     }
 }
+
 
 async function createDefaultUsers() {
     const users = [
