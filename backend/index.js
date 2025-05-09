@@ -38,6 +38,7 @@ async function waitForDatabase() {
 
 async function setUserPassword() {
     try {
+        // Zet het wachtwoord voor de gebruiker 'secadv' via een SQL-opdracht
         await pool.query(`
             ALTER ROLE secadv WITH PASSWORD '${process.env.DB_PASSWORD}';
         `);
@@ -46,7 +47,6 @@ async function setUserPassword() {
         console.error("Fout bij instellen wachtwoord voor secadv:", err);
     }
 }
-
 
 async function updatePasswords() {
     try {
@@ -117,13 +117,17 @@ app.post('/register', async (req, res) => {
 });
 
 async function startApp() {
-    await waitForDatabase();
-    await setUserPassword(); 
-    await createDefaultUsers();
-    await updatePasswords();
-    app.listen(port, () => {
-        console.log(`App running on port ${port}.`);
-    });
+    try {
+        await waitForDatabase();
+        await setUserPassword();
+        await createDefaultUsers();
+        await updatePasswords();
+        app.listen(port, () => {
+            console.log(`App running on port ${port}.`);
+        });
+    } catch (err) {
+        console.error('Fout bij het starten van de app:', err);
+    }
 }
 
 startApp();
