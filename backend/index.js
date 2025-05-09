@@ -10,17 +10,21 @@ const app = express();
 const port = 3000;
 
 const pool = new pg.Pool({
-    user: process.env.DB_USER,      
-    host: process.env.DB_HOST,     
-    database: process.env.DB_NAME,     
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
     password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,        
-    connectionTimeoutMillis: 5000     
+    port: process.env.DB_PORT,
+    connectionTimeoutMillis: 5000
 });
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(
+    bodyParser.urlencoded({
+        extended: true,
+    })
+);
 
 async function waitForDatabase() {
     let attempts = 0;
@@ -39,8 +43,10 @@ async function waitForDatabase() {
 async function updatePasswords() {
     try {
         const result = await pool.query('SELECT id, user_name, password FROM users');
+
         for (let user of result.rows) {
             const hashedPassword = await bcrypt.hash(user.password, 10);
+
             await pool.query(
                 'UPDATE users SET password = $1 WHERE id = $2',
                 [hashedPassword, user.id]
@@ -48,6 +54,53 @@ async function updatePasswords() {
         }
     } catch (err) {
         console.error('Fout bij het updaten van wachtwoorden:', err);
+    }
+}
+
+async function createDatabaseUser() {
+    const createUserQuery = `
+        CREATE USER $1 WITH PASSWORD $2;
+        GRANT ALL PRIVILEGES ON DATABASE $3 TO $1;
+    `;
+    
+    try {
+        await pool.query(createUserQuery, [process.env.DB_USER, process.env.DB_PASSWORD, process.env.DB_NAME]);
+        console.log(`Database gebruiker ${process.env.DB_USER} succesvol aangemaakt.`);
+    } catch (err) {
+        console.error('Fout bij het aanmaken van de databasegebruiker:', err);
+    }
+
+    const grantUserPrivilegesQuery = `
+        GRANT ALL PRIVILEGES ON TABLE users TO $1;
+        GRANT USAGE, SELECT, UPDATE ON SEQUENCE users_id_seq TO $1;
+    `;
+    
+    try {
+        await pool.query(grantUserPrivilegesQuery, [process.env.DB_USER]);
+        console.log(`Privileges toegewezen aan gebruiker ${process.env.DB_USER}.`);
+    } catch (err) {
+        console.error('Fout bij het toewijzen van privileges:', err);
+    }
+}
+
+async function createDefaultUsers() {
+    const users = [
+        { username: process.env.USER_NAME_ADMIN, password: process.env.USER_PWD_ADMIN },
+        { username: process.env.USER_NAME_GRG, password: process.env.USER_PWD_GRG }
+    ];
+
+    for (const user of users) {
+        const hashedPassword = await bcrypt.hash(user.password, 10);
+
+        try {
+            await pool.query(
+                'INSERT INTO users (user_name, password) VALUES ($1, $2)',
+                [user.username, hashedPassword]
+            );
+            console.log(`Gebruiker ${user.username} aangemaakt met gehasht wachtwoord.`);
+        } catch (err) {
+            console.error(`Fout bij het aanmaken van gebruiker ${user.username}:`, err);
+        }
     }
 }
 
@@ -74,7 +127,6 @@ app.get('/authenticate/:username/:password', async (request, response) => {
             return response.status(401).json({ message: 'Invalid username or password' });
         }
     } catch (err) {
-        console.error('Error during authentication:', err);
         return response.status(500).json({ message: 'Internal server error' });
     }
 });
@@ -93,6 +145,8 @@ app.post('/register', async (req, res) => {
 
 async function startApp() {
     await waitForDatabase();
+    await createDatabaseUser();
+    await createDefaultUsers();
     await updatePasswords();
     app.listen(port, () => {
         console.log(`App running on port ${port}.`);
