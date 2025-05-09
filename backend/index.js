@@ -23,34 +23,38 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 async function waitForDatabase() {
-    let attempts = 0;
-    while (attempts < 10) {
-        try {
-            await pool.query('SELECT NOW()');
-            return;
-        } catch (err) {
-            attempts++;
-            await new Promise(resolve => setTimeout(resolve, 5000));
-        }
-    }
-    throw new Error('Database is niet beschikbaar na meerdere pogingen.');
+    console.log('Even wachten tot de database waarschijnlijk klaar is...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
 }
 
-async function createDbUser() {
+async function createDatabaseUser() {
+    const createUserQuery = `
+        CREATE USER ${process.env.DB_USER} WITH PASSWORD '${process.env.DB_PASSWORD}';
+        GRANT ALL PRIVILEGES ON DATABASE ${process.env.DB_NAME} TO ${process.env.DB_USER};
+    `;
+    
     try {
-        await pool.query(`DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'secadv') THEN
-                CREATE ROLE secadv LOGIN PASSWORD '${process.env.DB_PASSWORD}';
-            END IF;
-        END
-        $$;`);
-        await pool.query(`GRANT ALL PRIVILEGES ON DATABASE pxldb TO secadv;`);
-        console.log("Gebruiker 'secadv' gecontroleerd/aangemaakt.");
+        console.log('Trying to create database user...');
+        await pool.query(createUserQuery);
+        console.log(`Database gebruiker ${process.env.DB_USER} succesvol aangemaakt.`);
     } catch (err) {
-        console.error("Fout bij het aanmaken van databasegebruiker:", err);
+        console.error('Fout bij het aanmaken van de databasegebruiker:', err);
+    }
+
+    const grantUserPrivilegesQuery = `
+        GRANT ALL PRIVILEGES ON TABLE users TO ${process.env.DB_USER};
+        GRANT USAGE, SELECT, UPDATE ON SEQUENCE users_id_seq TO ${process.env.DB_USER};
+    `;
+    
+    try {
+        console.log('Trying to grant privileges...');
+        await pool.query(grantUserPrivilegesQuery);
+        console.log(`Privileges toegewezen aan gebruiker ${process.env.DB_USER}.`);
+    } catch (err) {
+        console.error('Fout bij het toewijzen van privileges:', err);
     }
 }
+
 
 async function updatePasswords() {
     try {
@@ -122,7 +126,7 @@ app.post('/register', async (req, res) => {
 
 async function startApp() {
     await waitForDatabase();
-    await createDbUser(); 
+    await createDatabaseUser(); 
     await createDefaultUsers();
     await updatePasswords();
     app.listen(port, () => {
