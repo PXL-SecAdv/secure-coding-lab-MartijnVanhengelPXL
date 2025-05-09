@@ -59,29 +59,32 @@ async function updatePasswords() {
 
 async function createDatabaseUser() {
     const createUserQuery = `
-        CREATE USER $1 WITH PASSWORD $2;
-        GRANT ALL PRIVILEGES ON DATABASE $3 TO $1;
+        CREATE USER ${process.env.DB_USER} WITH PASSWORD '${process.env.DB_PASSWORD}';
+        GRANT ALL PRIVILEGES ON DATABASE ${process.env.DB_NAME} TO ${process.env.DB_USER};
     `;
     
     try {
-        await pool.query(createUserQuery, [process.env.DB_USER, process.env.DB_PASSWORD, process.env.DB_NAME]);
+        console.log('Trying to create database user...');
+        await pool.query(createUserQuery);
         console.log(`Database gebruiker ${process.env.DB_USER} succesvol aangemaakt.`);
     } catch (err) {
         console.error('Fout bij het aanmaken van de databasegebruiker:', err);
     }
 
     const grantUserPrivilegesQuery = `
-        GRANT ALL PRIVILEGES ON TABLE users TO $1;
-        GRANT USAGE, SELECT, UPDATE ON SEQUENCE users_id_seq TO $1;
+        GRANT ALL PRIVILEGES ON TABLE users TO ${process.env.DB_USER};
+        GRANT USAGE, SELECT, UPDATE ON SEQUENCE users_id_seq TO ${process.env.DB_USER};
     `;
     
     try {
-        await pool.query(grantUserPrivilegesQuery, [process.env.DB_USER]);
+        console.log('Trying to grant privileges...');
+        await pool.query(grantUserPrivilegesQuery);
         console.log(`Privileges toegewezen aan gebruiker ${process.env.DB_USER}.`);
     } catch (err) {
         console.error('Fout bij het toewijzen van privileges:', err);
     }
 }
+
 
 async function createDefaultUsers() {
     const users = [
