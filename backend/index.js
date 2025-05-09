@@ -35,17 +35,6 @@ async function waitForDatabase() {
     throw new Error('Database is niet beschikbaar na meerdere pogingen.');
 }
 
-async function setUserPassword() {
-    try {
-        await pool.query(`
-            ALTER ROLE secadv WITH PASSWORD '${process.env.DB_PASSWORD}';
-        `);
-        console.log("Wachtwoord voor secadv ingesteld.");
-    } catch (err) {
-        console.error("Fout bij instellen wachtwoord voor secadv:", err);
-    }
-}
-
 async function updatePasswords() {
     try {
         const result = await pool.query('SELECT id, user_name, password FROM users');
@@ -125,7 +114,6 @@ app.post('/register', async (req, res) => {
 async function startApp() {
     try {
         await waitForDatabase(); 
-        await setUserPassword(); 
         await createDefaultUsers(); 
         await updatePasswords();  
         app.listen(port, () => {
