@@ -79,9 +79,9 @@ async function createDefaultUsers() {
                 'INSERT INTO users (user_name, password) VALUES ($1, $2)',
                 [user.username, hashedPassword]
             );
-            console.log(`Gebruiker ${user.username} aangemaakt.`);
+            console.log(`Gebruiker aangemaakt.`);
         } catch (err) {
-            console.error(`Fout bij het aanmaken van gebruiker ${user.username}:`, err.message);
+            console.error(`Fout bij het aanmaken van gebruiker:`, err.message);
         }
     }
 }
