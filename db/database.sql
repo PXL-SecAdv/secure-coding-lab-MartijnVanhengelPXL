@@ -2,7 +2,7 @@ CREATE DATABASE pxldb;
 
 \c pxldb;
 
-create user secadv with password '';
+create user secadv with password 'randomPaswoord';
 GRANT ALL PRIVILEGES ON DATABASE pxldb TO secadv;
 
 BEGIN;
