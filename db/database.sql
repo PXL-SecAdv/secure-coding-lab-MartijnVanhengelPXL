@@ -2,7 +2,7 @@ CREATE DATABASE pxldb;
 
 \c pxldb;
 
-CREATE ROLE secadv LOGIN;
+create user secadv with password '';
 GRANT ALL PRIVILEGES ON DATABASE pxldb TO secadv;
 
 BEGIN;

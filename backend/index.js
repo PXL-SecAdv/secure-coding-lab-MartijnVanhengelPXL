@@ -38,7 +38,6 @@ async function waitForDatabase() {
 
 async function setUserPassword() {
     try {
-        // Zet het wachtwoord voor de gebruiker 'secadv' via een SQL-opdracht
         await pool.query(`
             ALTER ROLE secadv WITH PASSWORD '${process.env.DB_PASSWORD}';
         `);
