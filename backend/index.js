@@ -20,11 +20,7 @@ const pool = new pg.Pool({
 
 app.use(cors());
 app.use(bodyParser.json());
-app.use(
-    bodyParser.urlencoded({
-        extended: true,
-    })
-);
+app.use(bodyParser.urlencoded({ extended: true }));
 
 async function waitForDatabase() {
     let attempts = 0;
@@ -40,25 +36,33 @@ async function waitForDatabase() {
     throw new Error('Database is niet beschikbaar na meerdere pogingen.');
 }
 
+async function createDbUser() {
+    try {
+        await pool.query(`DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'secadv') THEN
+                CREATE ROLE secadv LOGIN PASSWORD '${process.env.DB_PASSWORD}';
+            END IF;
+        END
+        $$;`);
+        await pool.query(`GRANT ALL PRIVILEGES ON DATABASE pxldb TO secadv;`);
+        console.log("Gebruiker 'secadv' gecontroleerd/aangemaakt.");
+    } catch (err) {
+        console.error("Fout bij het aanmaken van databasegebruiker:", err);
+    }
+}
+
 async function updatePasswords() {
     try {
         const result = await pool.query('SELECT id, user_name, password FROM users');
-
         for (let user of result.rows) {
-            if (!user.password.startsWith('$2b$')) { 
-                const hashedPassword = await bcrypt.hash(user.password, 10);
-
-                await pool.query(
-                    'UPDATE users SET password = $1 WHERE id = $2',
-                    [hashedPassword, user.id]
-                );
-            }
+            const hashedPassword = await bcrypt.hash(user.password, 10);
+            await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, user.id]);
         }
     } catch (err) {
         console.error('Fout bij het updaten van wachtwoorden:', err);
     }
 }
-
 
 async function createDefaultUsers() {
     const users = [
@@ -68,44 +72,39 @@ async function createDefaultUsers() {
 
     for (const user of users) {
         const hashedPassword = await bcrypt.hash(user.password, 10);
-
         try {
             await pool.query(
                 'INSERT INTO users (user_name, password) VALUES ($1, $2)',
                 [user.username, hashedPassword]
             );
-            console.log(`Gebruiker ${user.username} aangemaakt met gehasht wachtwoord.`);
+            console.log(`Gebruiker ${user.username} aangemaakt.`);
         } catch (err) {
-            console.error(`Fout bij het aanmaken van gebruiker ${user.username}:`, err);
+            console.error(`Fout bij het aanmaken van gebruiker ${user.username}:`, err.message);
         }
     }
 }
 
 app.get('/authenticate/:username/:password', async (request, response) => {
-    const username = request.params.username
-    const password = request.params.password
+    const username = request.params.username;
+    const password = request.params.password;
 
     try {
-        const result = await pool.query(
-            'SELECT * FROM users WHERE user_name = $1',
-            [username]
-        )
-
+        const result = await pool.query('SELECT * FROM users WHERE user_name = $1', [username]);
         if (result.rows.length === 0) {
-            return response.status(401).json({ message: 'Invalid username or password' })
+            return response.status(401).json({ message: 'Invalid username or password' });
         }
 
-        const user = result.rows[0]
-        const match = await bcrypt.compare(password, user.password)
+        const user = result.rows[0];
+        const match = await bcrypt.compare(password, user.password);
 
         if (match) {
-            return response.status(200).json({ message: 'Login successful' })
+            return response.status(200).json({ message: 'Login successful' });
         } else {
-            return response.status(401).json({ message: 'Invalid username or password' })
+            return response.status(401).json({ message: 'Invalid username or password' });
         }
     } catch (err) {
-        console.error('Error during authentication:', err)
-        return response.status(500).json({ message: 'Internal server error' })
+        console.error('Error during authentication:', err);
+        return response.status(500).json({ message: 'Internal server error' });
     }
 });
 
@@ -123,6 +122,7 @@ app.post('/register', async (req, res) => {
 
 async function startApp() {
     await waitForDatabase();
+    await createDbUser(); 
     await createDefaultUsers();
     await updatePasswords();
     app.listen(port, () => {
