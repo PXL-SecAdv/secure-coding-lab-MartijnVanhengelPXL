@@ -1,5 +1,4 @@
 require('dotenv').config();
-
 const pg = require('pg');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -8,6 +7,15 @@ const cors = require('cors');
 
 const app = express();
 const port = 3000;
+
+const initialPool = new pg.Pool({
+    user: 'postgres', 
+    host: process.env.DB_HOST,
+    database: 'postgres', 
+    password: '', 
+    port: process.env.DB_PORT,
+    connectionTimeoutMillis: 5000
+});
 
 const pool = new pg.Pool({
     user: process.env.DB_USER,
@@ -26,7 +34,7 @@ async function waitForDatabase() {
     let attempts = 0;
     while (attempts < 10) {
         try {
-            await pool.query('SELECT NOW()');
+            await initialPool.query('SELECT NOW()');
             return;
         } catch (err) {
             attempts++;
@@ -38,7 +46,7 @@ async function waitForDatabase() {
 
 async function setUserPassword() {
     try {
-        await pool.query(`
+        await initialPool.query(`
             ALTER ROLE secadv WITH PASSWORD '${process.env.DB_PASSWORD}';
         `);
         console.log("Wachtwoord voor secadv ingesteld.");
@@ -117,10 +125,10 @@ app.post('/register', async (req, res) => {
 
 async function startApp() {
     try {
-        await waitForDatabase();
-        await setUserPassword();
-        await createDefaultUsers();
-        await updatePasswords();
+        await waitForDatabase(); 
+        await setUserPassword(); 
+        await createDefaultUsers(); 
+        await updatePasswords();  
         app.listen(port, () => {
             console.log(`App running on port ${port}.`);
         });
