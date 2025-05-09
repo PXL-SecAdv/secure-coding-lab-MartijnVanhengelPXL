@@ -93,6 +93,10 @@ app.get('/authenticate/:username/:password', async (request, response) => {
         }
 
         const user = result.rows[0];
+
+        console.log('Gehasht wachtwoord in de database:', user.password); 
+        console.log('Ingevoerde wachtwoord:', password);
+
         const match = await bcrypt.compare(password, user.password);
 
         if (match) {
@@ -101,9 +105,11 @@ app.get('/authenticate/:username/:password', async (request, response) => {
             return response.status(401).json({ message: 'Invalid username or password' });
         }
     } catch (err) {
+        console.error('Fout bij het inloggen:', err);
         return response.status(500).json({ message: 'Internal server error' });
     }
 });
+
 
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
