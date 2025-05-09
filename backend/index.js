@@ -25,7 +25,7 @@ async function waitForDatabase() {
     let attempts = 0;
     while (attempts < 10) {
         try {
-            await initialPool.query('SELECT NOW()');
+            await pool.query('SELECT NOW()');
             return;
         } catch (err) {
             attempts++;
@@ -37,7 +37,7 @@ async function waitForDatabase() {
 
 async function setUserPassword() {
     try {
-        await initialPool.query(`
+        await pool.query(`
             ALTER ROLE secadv WITH PASSWORD '${process.env.DB_PASSWORD}';
         `);
         console.log("Wachtwoord voor secadv ingesteld.");
