@@ -24,7 +24,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 async function waitForDatabase() {
     console.log('Even wachten tot de database waarschijnlijk klaar is...');
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 10000));
 }
 
 async function createDatabaseUser() {
