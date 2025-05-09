@@ -57,35 +57,6 @@ async function updatePasswords() {
     }
 }
 
-async function createDatabaseUser() {
-    const createUserQuery = `
-        CREATE USER ${process.env.DB_USER} WITH PASSWORD '${process.env.DB_PASSWORD}';
-        GRANT ALL PRIVILEGES ON DATABASE ${process.env.DB_NAME} TO ${process.env.DB_USER};
-    `;
-    
-    try {
-        console.log('Trying to create database user...');
-        await pool.query(createUserQuery);
-        console.log(`Database gebruiker ${process.env.DB_USER} succesvol aangemaakt.`);
-    } catch (err) {
-        console.error('Fout bij het aanmaken van de databasegebruiker:', err);
-    }
-
-    const grantUserPrivilegesQuery = `
-        GRANT ALL PRIVILEGES ON TABLE users TO ${process.env.DB_USER};
-        GRANT USAGE, SELECT, UPDATE ON SEQUENCE users_id_seq TO ${process.env.DB_USER};
-    `;
-    
-    try {
-        console.log('Trying to grant privileges...');
-        await pool.query(grantUserPrivilegesQuery);
-        console.log(`Privileges toegewezen aan gebruiker ${process.env.DB_USER}.`);
-    } catch (err) {
-        console.error('Fout bij het toewijzen van privileges:', err);
-    }
-}
-
-
 async function createDefaultUsers() {
     const users = [
         { username: process.env.USER_NAME_ADMIN, password: process.env.USER_PWD_ADMIN },
@@ -148,7 +119,6 @@ app.post('/register', async (req, res) => {
 
 async function startApp() {
     await waitForDatabase();
-    await createDatabaseUser();
     await createDefaultUsers();
     await updatePasswords();
     app.listen(port, () => {
