@@ -79,37 +79,32 @@ async function createDefaultUsers() {
 }
 
 app.get('/authenticate/:username/:password', async (request, response) => {
-    const username = request.params.username;
-    const password = request.params.password;
+    const username = request.params.username
+    const password = request.params.password
 
     try {
         const result = await pool.query(
             'SELECT * FROM users WHERE user_name = $1',
             [username]
-        );
+        )
 
         if (result.rows.length === 0) {
-            return response.status(401).json({ message: 'Invalid username or password' });
+            return response.status(401).json({ message: 'Invalid username or password' })
         }
 
-        const user = result.rows[0];
-
-        console.log('Gehasht wachtwoord in de database:', user.password); 
-        console.log('Ingevoerde wachtwoord:', password);
-
-        const match = await bcrypt.compare(password, user.password);
+        const user = result.rows[0]
+        const match = await bcrypt.compare(password, user.password)
 
         if (match) {
-            return response.status(200).json({ message: 'Login successful' });
+            return response.status(200).json({ message: 'Login successful' })
         } else {
-            return response.status(401).json({ message: 'Invalid username or password' });
+            return response.status(401).json({ message: 'Invalid username or password' })
         }
     } catch (err) {
-        console.error('Fout bij het inloggen:', err);
-        return response.status(500).json({ message: 'Internal server error' });
+        console.error('Error during authentication:', err)
+        return response.status(500).json({ message: 'Internal server error' })
     }
 });
-
 
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
