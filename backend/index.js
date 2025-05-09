@@ -23,35 +23,27 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 async function waitForDatabase() {
-    console.log('Even wachten tot de database waarschijnlijk klaar is...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    let attempts = 0;
+    while (attempts < 10) {
+        try {
+            await pool.query('SELECT NOW()');
+            return;
+        } catch (err) {
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    }
+    throw new Error('Database is niet beschikbaar na meerdere pogingen.');
 }
 
-async function createDatabaseUser() {
-    const createUserQuery = `
-        CREATE USER ${process.env.DB_USER} WITH PASSWORD '${process.env.DB_PASSWORD}';
-        GRANT ALL PRIVILEGES ON DATABASE ${process.env.DB_NAME} TO ${process.env.DB_USER};
-    `;
-    
+async function setUserPassword() {
     try {
-        console.log('Trying to create database user...');
-        await pool.query(createUserQuery);
-        console.log(`Database gebruiker ${process.env.DB_USER} succesvol aangemaakt.`);
+        await pool.query(`
+            ALTER ROLE secadv WITH PASSWORD '${process.env.DB_PASSWORD}';
+        `);
+        console.log("Wachtwoord voor secadv ingesteld.");
     } catch (err) {
-        console.error('Fout bij het aanmaken van de databasegebruiker:', err);
-    }
-
-    const grantUserPrivilegesQuery = `
-        GRANT ALL PRIVILEGES ON TABLE users TO ${process.env.DB_USER};
-        GRANT USAGE, SELECT, UPDATE ON SEQUENCE users_id_seq TO ${process.env.DB_USER};
-    `;
-    
-    try {
-        console.log('Trying to grant privileges...');
-        await pool.query(grantUserPrivilegesQuery);
-        console.log(`Privileges toegewezen aan gebruiker ${process.env.DB_USER}.`);
-    } catch (err) {
-        console.error('Fout bij het toewijzen van privileges:', err);
+        console.error("Fout bij instellen wachtwoord voor secadv:", err);
     }
 }
 
@@ -126,7 +118,7 @@ app.post('/register', async (req, res) => {
 
 async function startApp() {
     await waitForDatabase();
-    await createDatabaseUser(); 
+    await setUserPassword(); 
     await createDefaultUsers();
     await updatePasswords();
     app.listen(port, () => {
